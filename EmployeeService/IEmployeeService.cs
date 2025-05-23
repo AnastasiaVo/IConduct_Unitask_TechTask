@@ -1,7 +1,6 @@
-﻿using Newtonsoft.Json.Linq;
-using System.Collections.Generic;
-using System.ServiceModel;
+﻿using System.ServiceModel;
 using System.ServiceModel.Web;
+using System.Threading.Tasks;
 
 namespace EmployeeService
 {
@@ -12,16 +11,11 @@ namespace EmployeeService
         [OperationContract]
         [WebInvoke(Method = "GET", UriTemplate = "GetEmployeeById?id={id}",
             ResponseFormat = WebMessageFormat.Json, BodyStyle = WebMessageBodyStyle.Bare)]
-        JObject GetEmployeeById(int id);
+        Task<EmployeeResponse> GetEmployeeByIdAsync(int id);
 
         [OperationContract]
         [WebInvoke(Method = "PUT", UriTemplate = "EnableEmployee?id={id}",
             BodyStyle = WebMessageBodyStyle.WrappedRequest)]
-        void EnableEmployee(int id, int enable);
-
-        [OperationContract]
-        [WebInvoke(Method = "GET", UriTemplate = "GetAllEmployees",
-            ResponseFormat = WebMessageFormat.Json, BodyStyle = WebMessageBodyStyle.Bare)]
-        List<EmployeeEntity> GetAllEmployees();
+        Task EnableEmployeeAsync(int id, bool enable);
     }
 }

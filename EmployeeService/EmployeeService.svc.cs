@@ -1,8 +1,8 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using EmployeeDatabase;
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Linq;
+using System.Threading.Tasks;
 
 namespace EmployeeService
 {
@@ -10,38 +10,77 @@ namespace EmployeeService
     // NOTE: In order to launch WCF Test Client for testing this service, please select EmployeeService.svc or EmployeeService.svc.cs at the Solution Explorer and start debugging.
     public class EmployeeService : IEmployeeService
     {
-        private const string connectionString
-            = "Server=.;Database=Test;Trusted_Connection=True;MultipleActiveResultSets=True;Encrypt=True;TrustServerCertificate=True;";
+        private readonly IEmployeeRepository _repository;
 
-        public JObject GetEmployeeById(int id)
+        public EmployeeService()
         {
-            DataTable dt = EmployeeRepository.GetQueryResult("SELECT * FROM Employee");
+            _repository = new EmployeeRepository();
+        }
+        public EmployeeService(IEmployeeRepository repository)
+        {
+            _repository = repository ?? throw new ArgumentNullException(nameof(repository));
+        }
 
-            EmployeeEntity rootEmployee = null;
+        public async Task<EmployeeResponse> GetEmployeeByIdAsync(int id)
+        {
+            if (id <= 0)
+            {
+                throw new ArgumentException("Id must be positive", nameof(id));
+            }
+
+            try
+            {
+                var dt = await _repository.GetEmployeeHierarchyAsync(id);
+                if (dt.Rows.Count == 0)
+                {
+                    throw new KeyNotFoundException($"Employee with Id {id} not found.");
+                }
+
+                var employeeDict = BuildEmployeeDictionary(dt);
+                if (!employeeDict.TryGetValue(id, out EmployeeEntity targetEmployee))
+                {
+                    throw new KeyNotFoundException($"Employee with Id {id} not found.");
+                }
+
+                BuildHierarchy(employeeDict);
+                return new EmployeeResponse { Employee = new List<EmployeeEntity> { targetEmployee } };
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Failed to retrieve employee data.", ex);
+            }
+        }
+
+        public async Task EnableEmployeeAsync(int id, bool enable)
+        {
+            if (id <= 0)
+            {
+                throw new ArgumentException("Id must be positive", nameof(id));
+            }
+
+            try
+            {
+                await _repository.UpdateEmployeeEnableAsync(id, enable);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Failed to update employee status.", ex);
+            }
+        }
+
+        private static Dictionary<int, EmployeeEntity> BuildEmployeeDictionary(DataTable dt)
+        {
             var employeeDict = new Dictionary<int, EmployeeEntity>();
-
             foreach (DataRow row in dt.Rows)
             {
-                var employee = new EmployeeEntity
-                {
-                    Id = Convert.ToInt32(row["Id"]),
-                    Name = row["Name"].ToString(),
-                    ManagerId = row["ManagerId"] == DBNull.Value ? (int?)null : Convert.ToInt32(row["ManagerId"]),
-                    Enable = Convert.ToBoolean(row["Enable"])
-                };
-                employeeDict[employee.Id] = employee;
-
-                if (employee.Id == id)
-                {
-                    rootEmployee = employee;
-                }
+                var emp = EmployeeMapper.Map(row);
+                employeeDict[emp.Id] = emp;
             }
+            return employeeDict;
+        }
 
-            if (rootEmployee == null)
-            {
-                return null;
-            }
-
+        private static void BuildHierarchy(Dictionary<int, EmployeeEntity> employeeDict)
+        {
             foreach (var employee in employeeDict.Values)
             {
                 if (employee.ManagerId.HasValue && employeeDict.ContainsKey(employee.ManagerId.Value))
@@ -49,71 +88,6 @@ namespace EmployeeService
                     employeeDict[employee.ManagerId.Value].Employees.Add(employee);
                 }
             }
-
-            var allEmployees = new List<EmployeeEntity>();
-            var visited = new HashSet<int>();
-
-            void CollectEmployees(EmployeeEntity employee)
-            {
-                if (employee == null || visited.Contains(employee.Id)) return;
-                visited.Add(employee.Id);
-
-                foreach (var emp in employee.Employees)
-                {
-                    CollectEmployees(emp);
-                    if (emp != rootEmployee)
-                    {
-                        allEmployees.Add(emp);
-                    }
-                }
-            }
-
-            CollectEmployees(rootEmployee);
-            allEmployees.Add(rootEmployee);
-
-            var result = new JObject
-            {
-                ["Employees"] = new JArray(allEmployees.Select(e => JObject.FromObject(e))),
-                ["Root"] = JObject.FromObject(rootEmployee)
-            };
-
-            return result;
-        }
-
-        public void EnableEmployee(int id, int enable)
-        {
-            if (enable != 0 && enable != 1)
-            {
-                throw new ArgumentException("Enable parameter must be 0 or 1.");
-            }
-
-            const string query = "UPDATE Employee SET Enable = @Enable WHERE ID = @ID";
-            var parameters = new[]
-            {
-                new System.Data.SqlClient.SqlParameter("@Enable", enable),
-                new System.Data.SqlClient.SqlParameter("@ID", id)
-            };
-            EmployeeRepository.ExecuteNonQuery(query, parameters);
-        }
-
-        public List<EmployeeEntity> GetAllEmployees()
-        {
-            DataTable dt = EmployeeRepository.GetQueryResult("SELECT * FROM Employee");
-            var allEmployees = new List<EmployeeEntity>();
-
-            foreach (DataRow row in dt.Rows)
-            {
-                var employee = new EmployeeEntity
-                {
-                    Id = Convert.ToInt32(row["Id"]),
-                    Name = row["Name"].ToString(),
-                    ManagerId = row["ManagerId"] == DBNull.Value ? (int?)null : Convert.ToInt32(row["ManagerId"]),
-                    Enable = Convert.ToBoolean(row["Enable"])
-                };
-                allEmployees.Add(employee);
-            }
-
-            return allEmployees;
         }
     }
 }
