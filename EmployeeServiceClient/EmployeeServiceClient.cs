@@ -24,7 +24,7 @@ namespace EmployeeServiceClient
             if (!response.IsSuccessStatusCode)
             {
                 string errorContent = await response.Content.ReadAsStringAsync();
-                throw new HttpRequestException($"Status code: {response.StatusCode}, Details: {errorContent}");
+                throw new HttpRequestException($"Status code: {response.StatusCode}");
             }
             return await response.Content.ReadAsStringAsync();
         }
@@ -42,7 +42,7 @@ namespace EmployeeServiceClient
             if (!response.IsSuccessStatusCode)
             {
                 string errorContent = await response.Content.ReadAsStringAsync();
-                throw new HttpRequestException($"Status code: {response.StatusCode}, Details: {errorContent}");
+                throw new HttpRequestException($"Status code: {response.StatusCode}");
             }
         }
     }

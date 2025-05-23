@@ -22,6 +22,7 @@ namespace EmployeeServiceClient
                 if (!int.TryParse(Console.ReadLine()?.Trim(), out int employeeId))
                 {
                     Console.WriteLine("Invalid ID entered.");
+                    Console.ReadLine();
                     return;
                 }
 
