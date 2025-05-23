@@ -1,7 +1,8 @@
-﻿using InterviewConsole;
+﻿using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 
 namespace EmployeeService
 {
@@ -12,9 +13,9 @@ namespace EmployeeService
         private const string connectionString
             = "Server=.;Database=Test;Trusted_Connection=True;MultipleActiveResultSets=True;Encrypt=True;TrustServerCertificate=True;";
 
-        public EmployeeEntity GetEmployeeById(int id)
+        public JObject GetEmployeeById(int id)
         {
-            DataTable dt = DatabaseHelper.GetQueryResult("SELECT * FROM Employee");
+            DataTable dt = EmployeeRepository.GetQueryResult("SELECT * FROM Employee");
 
             EmployeeEntity rootEmployee = null;
             var employeeDict = new Dictionary<int, EmployeeEntity>();
@@ -49,7 +50,34 @@ namespace EmployeeService
                 }
             }
 
-            return rootEmployee;
+            var allEmployees = new List<EmployeeEntity>();
+            var visited = new HashSet<int>();
+
+            void CollectEmployees(EmployeeEntity employee)
+            {
+                if (employee == null || visited.Contains(employee.Id)) return;
+                visited.Add(employee.Id);
+
+                foreach (var emp in employee.Employees)
+                {
+                    CollectEmployees(emp);
+                    if (emp != rootEmployee)
+                    {
+                        allEmployees.Add(emp);
+                    }
+                }
+            }
+
+            CollectEmployees(rootEmployee);
+            allEmployees.Add(rootEmployee);
+
+            var result = new JObject
+            {
+                ["Employees"] = new JArray(allEmployees.Select(e => JObject.FromObject(e))),
+                ["Root"] = JObject.FromObject(rootEmployee)
+            };
+
+            return result;
         }
 
         public void EnableEmployee(int id, int enable)
@@ -59,13 +87,33 @@ namespace EmployeeService
                 throw new ArgumentException("Enable parameter must be 0 or 1.");
             }
 
-            string query = "UPDATE Employee SET Enable = @Enable WHERE ID = @ID";
+            const string query = "UPDATE Employee SET Enable = @Enable WHERE ID = @ID";
             var parameters = new[]
             {
                 new System.Data.SqlClient.SqlParameter("@Enable", enable),
                 new System.Data.SqlClient.SqlParameter("@ID", id)
             };
-            DatabaseHelper.ExecuteNonQuery(query, parameters);
+            EmployeeRepository.ExecuteNonQuery(query, parameters);
+        }
+
+        public List<EmployeeEntity> GetAllEmployees()
+        {
+            DataTable dt = EmployeeRepository.GetQueryResult("SELECT * FROM Employee");
+            var allEmployees = new List<EmployeeEntity>();
+
+            foreach (DataRow row in dt.Rows)
+            {
+                var employee = new EmployeeEntity
+                {
+                    Id = Convert.ToInt32(row["Id"]),
+                    Name = row["Name"].ToString(),
+                    ManagerId = row["ManagerId"] == DBNull.Value ? (int?)null : Convert.ToInt32(row["ManagerId"]),
+                    Enable = Convert.ToBoolean(row["Enable"])
+                };
+                allEmployees.Add(employee);
+            }
+
+            return allEmployees;
         }
     }
 }

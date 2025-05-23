@@ -1,7 +1,6 @@
-﻿using System.Collections.Generic;
-using System.Runtime.Serialization;
+﻿using System.Runtime.Serialization;
 
-namespace EmployeeService
+namespace EmployeeDatabase
 {
     [DataContract]
     public class EmployeeEntity

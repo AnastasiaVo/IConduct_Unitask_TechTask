@@ -1,4 +1,6 @@
-﻿using System.ServiceModel;
+﻿using Newtonsoft.Json.Linq;
+using System.Collections.Generic;
+using System.ServiceModel;
 using System.ServiceModel.Web;
 
 namespace EmployeeService
@@ -10,11 +12,16 @@ namespace EmployeeService
         [OperationContract]
         [WebInvoke(Method = "GET", UriTemplate = "GetEmployeeById?id={id}",
             ResponseFormat = WebMessageFormat.Json, BodyStyle = WebMessageBodyStyle.Bare)]
-        EmployeeEntity GetEmployeeById(int id);
+        JObject GetEmployeeById(int id);
 
         [OperationContract]
         [WebInvoke(Method = "PUT", UriTemplate = "EnableEmployee?id={id}",
             BodyStyle = WebMessageBodyStyle.WrappedRequest)]
         void EnableEmployee(int id, int enable);
+
+        [OperationContract]
+        [WebInvoke(Method = "GET", UriTemplate = "GetAllEmployees",
+            ResponseFormat = WebMessageFormat.Json, BodyStyle = WebMessageBodyStyle.Bare)]
+        List<EmployeeEntity> GetAllEmployees();
     }
 }

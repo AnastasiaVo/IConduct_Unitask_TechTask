@@ -1,9 +1,9 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
 
-namespace InterviewConsole
+namespace EmployeeDatabase
 {
-    public static class DatabaseHelper
+    public static class EmployeeRepository
     {
         private const string ConnectionString = "Server=.;Database=Test;Trusted_Connection=True;MultipleActiveResultSets=True;Encrypt=True;TrustServerCertificate=True;";
 
